@@ -18,7 +18,6 @@ Created on Wed Nov 17 14:35:54 2021
 """
 import numpy as np
 
-
 def _mask_cast(mask_keep, sz):
     if len(mask_keep) < sz:
         # Assume inds
@@ -50,7 +49,7 @@ def conditional(mean, cov, mask_keep, vals_cond):
     mu2 = mean[mask_keep]
 
     msg = 'Conditional must receive values of all the previous variables'
-    assert(len(vals_cond) == len(mu1)), msg
+    assert(len(vals_cond)==len(mu1)), msg
 
     sigma11 = cov[:, ~mask_keep][~mask_keep]
     sigma12 = cov[:, mask_keep][~mask_keep]
@@ -65,6 +64,26 @@ def conditional(mean, cov, mask_keep, vals_cond):
 
     sigma_cond = sigma22 - sigma21 @ sigma11_inv @ sigma12
     return mu_cond, sigma_cond
+
+
+def random_mvn(nd=2, mu_sc=10.0, T_sc=10.0):
+    """Generates a random mvn for testing"""
+    mu = mu_sc*(np.random.uniform(size=nd) - 0.5)
+    T = T_sc*(np.random.uniform(size=(nd, nd)) - 0.5)
+    cov = T.T @ T
+    return (mu, cov)
+
+
+def random_mvn_mix(K, nd=2, mu_sc=10.0, T_sc=10.0):
+    mu_cov_lst = []
+    for k in range(K):
+        mu_cov = random_mvn(nd, mu_sc, T_sc)
+        mu_cov_lst.append(mu_cov)
+
+    # sample w:
+    w = np.random.uniform(size=K)
+    w = w / w.sum()
+    return (w, mu_cov_lst)
 
 
 # %%
@@ -109,16 +128,19 @@ def ts_plot(mean, cov, vals=None, mask=None, sc=1.0):
 
 
 if __name__ == "__main__":
-    N = 1000000
+    import matplotlib.pyplot as plt
+    import seaborn as sns
+
+    N = 100000
     M = N//10
     nd = 10
 
-    mu = 10.0*(np.random.uniform(size=nd)-0.5)
-    T = 10.0*(np.random.uniform(size=(nd, nd))-0.5)
-
-    cov = T.T @ T
+    mu, cov = random_mvn(nd)
     X = np.random.multivariate_normal(mu, cov, N).T
     eps = 3e1
+
+    # %% Gaussian mixture
+    K = 2
 
     # %% Test conditioning with All except k
     for k in range(nd):
